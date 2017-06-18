@@ -48,7 +48,7 @@ def color_hist(img, nbins=32):    #bins_range=(0, 256)
 
 # Define a function to extract features from a list of images
 # Have this function call bin_spatial() and color_hist()
-def extract_features(imgs, color_space='RGB', spatial_size=(32, 32),
+def extract_features(imgs, batch_id='', color_space='RGB', spatial_size=(32, 32),
                         hist_bins=32, orient=9, 
                         pix_per_cell=8, cell_per_block=2, hog_channel=0,
                         spatial_feat=True, hist_feat=True, hog_feat=True):
@@ -57,7 +57,7 @@ def extract_features(imgs, color_space='RGB', spatial_size=(32, 32),
     # Iterate through the list of images
     #for file in imgs:
     num_of_imgs = len(imgs)
-    for id in tqdm(range(num_of_imgs), desc='Extracting'):
+    for id in tqdm(range(num_of_imgs), desc='Extracting '+batch_id):
         file = imgs[id]
         file_features = []
         # Read in each one by one
