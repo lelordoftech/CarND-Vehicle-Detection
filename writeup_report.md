@@ -221,6 +221,8 @@ Here I'll talk about the approach I took, what techniques I used, what worked an
 * Sliding Windows
 * Multi-scale Windows **(Tried but cannot get better result at this time)**
 * Hog Sub-sampling Window Search **(Tried but cannot get better result at this time)**
+(19th code cell of the IPython notebook in line 48-111
+Original function is in line 113-141)
 * Heatmap, Threshold and label bounding boxes
 
 ##### Fail cases:
