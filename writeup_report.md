@@ -110,6 +110,7 @@ So I will continue learn how to use SGDClassifier with better parameters later.
 
 Sliding function is in 19th code cell of the IPython notebook in lines 05-44.
 I reused this code from Udacity's lesson.
+I also implement Hog Sub-sampling Window Search (19th code cell of the IPython notebook in line 48-127; Original function is in line 129-157) to make my pipeline run faster.
 
 I decided to search all over the image (720, 1280, 3):
 
@@ -144,21 +145,65 @@ I recorded the positions of positive detections in each frame of the video.  Fro
 To decrease false positives, beside using threshold method I also add some conditions for bounding box as below:
 
 * Should have ymin value should be in range (ystart : ystart + offset)
-* Should have width value is more than or equal height value
+* Should have width value is in range from height to 2*height
+* Should compare with previous frame to make the result is more smoothly
 
 ```python
-if (np.min(nonzeroy) < ystart+32): # check ymin
-    # Define a bounding box based on min/max x and y
-    bbox = ((np.min(nonzerox), np.min(nonzeroy)), (np.max(nonzerox), np.max(nonzeroy)))
-    if (bbox[1][0]-bbox[0][0] >= bbox[1][1]-bbox[0][1]): # width >= height
-        # Draw the box on the image
-        cv2.rectangle(img, bbox[0], bbox[1], (0,0,255), 6)
+def draw_labeled_bboxes(img, labels, ystart):
+
+    global pre_bboxes
+    
+    is_have_car = False
+    # Iterate through all detected cars
+    for car_number in range(1, labels[1]+1):
+        # Find pixels with each car_number label value
+        nonzero = (labels[0] == car_number).nonzero()
+        # Identify x and y values of those pixels
+        nonzeroy = np.array(nonzero[0])
+        nonzerox = np.array(nonzero[1])
+        if (np.min(nonzeroy) < ystart+40): # check ymin with offset is 1/2 window search
+            # Define a bounding box based on min/max x and y
+            bbox = ((np.min(nonzerox), np.min(nonzeroy)), (np.max(nonzerox), np.max(nonzeroy)))
+            if (bbox[1][0]-bbox[0][0] >= bbox[1][1]-bbox[0][1] and
+                bbox[1][0]-bbox[0][0] <= 2*bbox[1][1]-bbox[0][1]): # width >= height and width <= 2*height
+                is_have_car = True
+
+        # Update bbox base on pre frame
+        if is_have_car == True:
+            if len(pre_bboxes) >= car_number:
+                if (abs(bbox[0][0] - pre_bboxes[car_number-1][0][0]) <= 40 and
+                    abs(bbox[0][1] - pre_bboxes[car_number-1][0][1]) <= 40 and
+                    abs(bbox[1][0] - pre_bboxes[car_number-1][1][0]) <= 40 and
+                    abs(bbox[1][1] - pre_bboxes[car_number-1][1][1]) <= 40): # Not different too much
+                    bbox = tuple(map(tuple, np.sum((pre_bboxes[car_number-1], bbox), axis=0)//2))
+        else:
+            '''
+            if len(pre_bboxes) >= car_number:
+                bbox = pre_bboxes[car_number-1]
+            else:
+            '''
+            bbox = ((0,0),(0,0))
+
+        if bbox != ((0,0),(0,0)):
+            # Draw the box on the image
+            cv2.rectangle(img, bbox[0], bbox[1], (0,0,255), 6)
+
+            # Update pre_frame_bbox_list
+            if len(pre_bboxes) >= car_number:
+                pre_bboxes[car_number-1] = bbox
+            else:
+                pre_bboxes.append(bbox)
+
+        is_have_car = False # Reset for next iter
+
+    # Return the image
+    return img
 ```
 
-I have a little change is appying threshold with 50% heatmap:
+I have a little change is appying threshold with 40% length of heatmap queue:
 ```python
 def pipeline_heatmap():
-    threshold = max(np.concatenate(heat).ravel())*0.5 # Reduce detection result to reduce noise
+    threshold = len(heatmap_queue)*0.4
     heat = apply_threshold(heat, threshold)
 ```
 
@@ -219,11 +264,10 @@ Here I'll talk about the approach I took, what techniques I used, what worked an
 * Scalable Linear Support Vector Machine for classification (LinearSVC)
 * Stochastic Gradient Descent (SGD) Classifier **(Tried but cannot get better result at this time)**
 * Sliding Windows
-* Multi-scale Windows **(Tried but cannot get better result at this time)**
-* Hog Sub-sampling Window Search **(Tried but cannot get better result at this time)**
-(19th code cell of the IPython notebook in line 48-111
-Original function is in line 113-141)
+* Multi-scale Windows **(Tried but cannot get better result at this time, maybe I have some wrong implementation)**
+* Hog Sub-sampling Window Search
 * Heatmap, Threshold and label bounding boxes
+* History mapping: refer to the previous frame's bounding boxes
 
 ##### Fail cases:
 
@@ -234,7 +278,6 @@ Original function is in line 113-141)
 
 * Try other Classifier method, not just linear SVC to get not only better accuracy prediction but also processing faster in almost weak laptop
 * Optimize sliding windows with Multi-scale Windows
-* Optimize speed of main pipeline with Hog Sub-sampling Window Search
 * Refer heatmap of current frame to the previous frame to make the result more smooth
 * Implement other detected vehicle positions drawn: circles, cubes ...
 * Combine with Advanced Lane detection project
