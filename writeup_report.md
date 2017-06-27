@@ -108,17 +108,42 @@ So I will continue learn how to use SGDClassifier with better parameters later.
 
 #### 1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
 
-Sliding function is in 19th code cell of the IPython notebook in lines 05-44.
-I reused this code from Udacity's lesson.
-I also implement Hog Sub-sampling Window Search (19th code cell of the IPython notebook in line 48-127; Original function is in line 129-157) to make my pipeline run faster.
+Sliding function is in 19th code cell of the IPython notebook in lines 01-48.
+I reused this code from Udacity's lesson with a little change:
+```python
+    # Start position
+    x_start = x_start_stop[0]
 
-I decided to search all over the image (720, 1280, 3):
+    # Loop through finding x and y window positions
+    # Note: you could vectorize this step, but in practice
+    # you'll be considering windows one by one with your
+    # classifier, so looping makes sense
+    for ys in range(ny_windows):
+        for xs in range(nx_windows):
+            # Calculate window position
+            startx = xs*nx_pix_per_step + x_start
+            endx = startx + xy_window[0]
+            starty = ys*ny_pix_per_step + y_start_stop[0]
+            endy = starty + xy_window[1]
 
-* left to right: x_start = 0 to x_stop = 1280 (I want to cover through all the width of frame)
+            # Append window position to list
+            window_list.append(((startx, starty), (endx, endy)))
+        nx_windows += int(x_start_stop[0]/(ny_windows-1)/nx_pix_per_step)
+        x_start -= x_start_stop[0]//(ny_windows-1)
+```
+
+I decided to search all over the image (720, 1280, 3) with below region of interest:
+
+* left to right: x_start = 640 to x_stop = 1280 for the top slice
+* x_start value will decrease to 0 at the bottom slice
 * top to bottom: y_start = 400 to y_stop = 656 (y < 400 is toptree, sky or very small vehicles. They is too far from us; y > 656 is the front of our car. So we do not need to focus on these area)
 * sub_windows = (80, 80) (1280/80=16 so we can cover through all the width of frame)
 * overlap = 0.5 (I think it is enough for detection and give best result)
 (20th code cell of the IPython notebook)
+
+So I have a Trapezoid region for vehicle detection in our lane, filter all vehicle in other lane in left side.
+
+I also implement Hog Sub-sampling Window Search (19th code cell of the IPython notebook in line 52-131; Original function is in line 180-208) to make my pipeline run faster.
 
 And came up with this:
 
@@ -263,7 +288,7 @@ Here I'll talk about the approach I took, what techniques I used, what worked an
 * Color histogram features extraction
 * Scalable Linear Support Vector Machine for classification (LinearSVC)
 * Stochastic Gradient Descent (SGD) Classifier **(Tried but cannot get better result at this time)**
-* Sliding Windows
+* Sliding Windows with Trapezoid region of interest
 * Multi-scale Windows **(Tried but cannot get better result at this time, maybe I have some wrong implementation)**
 * Hog Sub-sampling Window Search
 * Heatmap, Threshold and label bounding boxes
